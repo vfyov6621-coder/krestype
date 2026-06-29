@@ -4,14 +4,24 @@
 блоков сайтов (через iframe). Только один администратор может писать,
 остальные — читают.
 
+**Live:** https://vfyov6621-coder.github.io/krestype/
+
 ## Технологии
 
-- **Next.js 16** + TypeScript + Tailwind CSS + shadcn/ui
+- **Next.js 16** + TypeScript + Tailwind CSS 4 + shadcn/ui
 - **Firebase Auth** (email/password, только админ)
 - **Cloud Firestore** (статьи, блоки)
-- **Firebase Hosting** (статический экспорт + CDN)
+- **GitHub Pages** (static export + GitHub Actions auto-deploy)
 
-## Структура
+## Почему GitHub Pages
+
+- Бесплатный хостинг статического контента
+- Деплой одной командой `git push`
+- HTTPS автоматически
+- Не нужны секреты/токены Firebase в GitHub
+- 100 GB/мес bandwidth и 1 GB storage на free tier
+
+## Архитектура
 
 ```
 src/
@@ -33,18 +43,18 @@ src/
 │   │   └── EmbedRenderer.tsx
 │   └── ui/                 # shadcn/ui компоненты
 ├── lib/
-│   ├── firebase.ts         # инициализация Firebase
+│   ├── firebase.ts         # инициализация Firebase (client SDK)
 │   ├── auth-context.tsx    # React Context для auth
 │   ├── articles.ts         # CRUD статей в Firestore
 │   └── router.ts           # hash-based роутинг
 └── types/
     └── index.ts            # типы Article, Block
 
-firebase.json               # конфиг Firebase Hosting + Firestore
-.firebaserc                 # проект Firebase
+public/404.html             # SPA fallback для GitHub Pages
+.github/workflows/deploy.yml # CI/CD: push → build → GitHub Pages
+next.config.ts              # static export + basePath=/krestype
 firestore.rules             # security rules (read public, write auth)
 firestore.indexes.json      # индексы Firestore
-.github/workflows/deploy.yml # CI/CD: push → build → firebase deploy
 ```
 
 ## Локальная разработка
@@ -56,42 +66,43 @@ bun run dev    # http://localhost:3000
 
 ## Подготовка Firebase (один раз)
 
+GitHub Pages — только статика. Данные и авторизация — в Firebase.
+
 1. Зайти в [Firebase Console](https://console.firebase.google.com) → проект `kres-portfolio`
 2. **Authentication → Sign-in method → Email/Password → Enable**
 3. **Authentication → Users → Add user**:
    - Email: `kres@krestype.app`
    - Password: `190565`
 4. **Firestore Database → Create database** (production mode, любой регион)
-5. **Firestore → Rules** — скопировать содержимое `firestore.rules` ИЛИ
-   дождаться деплоя через `firebase deploy --only firestore:rules`
-6. **Hosting → Get started** (если ещё не настроен)
+5. **Firestore → Rules** — вставить содержимое `firestore.rules` и нажать Publish
+   (или выполнить `firebase deploy --only firestore:rules` локально с Firebase CLI)
 
-## Деплой
-
-### Через GitHub Actions (рекомендуется)
-
-При пуше в `main` автоматически:
-1. Устанавливает зависимости
-2. Делает `next build` (static export в `out/`)
-3. Деплоит `out/` в Firebase Hosting
-4. Деплоит Firestore rules + indexes
-
-Нужен секрет `FIREBASE_SERVICE_ACCOUNT_KRES_PORTFOLIO` в GitHub репозитории
-(Settings → Secrets → Actions → New repository secret).
-
-Получить ключ сервисного аккаунта:
-- Firebase Console → Project Settings → Service accounts → Generate new private key
-- Скопировать содержимое JSON целиком в GitHub Secret
-
-### Вручную
-
+Деплой Firestore rules через Firebase CLI (опционально, только когда меняете правила):
 ```bash
-bun install
-bun run build              # генерирует out/
-npx firebase deploy        # деплой hosting + firestore
+npm install -g firebase-tools
+firebase login
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
+## Деплой на GitHub Pages (автоматически)
+
+При пуше в `main` GitHub Actions:
+1. Устанавливает зависимости (`bun install`)
+2. Собирает статику (`bun run build` → `out/`)
+3. Добавляет `.nojekyll` (чтобы GitHub Pages не игнорировал `_next/`)
+4. Заливает `out/` в GitHub Pages
+
+**URL сайта:** https://vfyov6621-coder.github.io/krestype/
+
+Чтобы включить Pages первый раз:
+1. GitHub repo → Settings → Pages → Source = **GitHub Actions**
+2. Сделать любой push в `main` — запустится workflow
+
 ## Роутинг (hash-based)
+
+Используется hash-based роутинг, потому что GitHub Pages не умеет
+server-side rewrite (нельзя сказать «все 404 → /index.html»).
+Hash-роутинг решает эту проблему: `#/article/my-slug` — клиент-side.
 
 - `/#/`                  — главная (список статей)
 - `/#/article/:slug`     — чтение статьи
@@ -112,13 +123,13 @@ CSP `frame-ancestors`. Для таких сайтов показывается f
 
 ## 24/7 работа
 
-Firebase Hosting обеспечивает:
-- Глобальный Google CDN
-- Автоматический SSL
-- 99.9% uptime SLA на free tier
-- Безлимитный bandwidth на free tier
+GitHub Pages обеспечивает:
+- Глобальный CDN (Cloudflare)
+- Автоматический HTTPS
+- Высокий аптайм (GitHub инфраструктура)
+- Авто-деплой из git
 
-Никакого сервера не нужно — вся логика клиент-side, данные в Firestore.
+Для хранения данных и авторизации используется Firebase (отдельно от хостинга).
 
 ## Лицензия
 

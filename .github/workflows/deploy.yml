@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -7,10 +7,16 @@ on:
 
 permissions:
   contents: read
+  pages: write
   id-token: write
 
+# Разрешаем только один параллельный деплой
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,6 +34,7 @@ jobs:
         run: bun run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+          NODE_ENV: "production"
 
       - name: Verify build output
         run: |
@@ -39,24 +46,26 @@ jobs:
             echo "ERROR: out/index.html missing"
             exit 1
           fi
+          # Добавляем .nojekyll, чтобы GitHub Pages не игнорировал _next/
+          touch out/.nojekyll
           echo "Build OK. Files:"
           ls -la out/
 
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KRES_PORTFOLIO }}
-          projectId: kres-portfolio
-          channelId: live
-          target: hosting
-        continue-on-error: true # если секрет не настроен — пропустить деплой
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Deploy Firestore rules
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KRES_PORTFOLIO != '' }}
-        uses: w9jds/firebase-action@v13.18.0
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          args: deploy --only firestore:rules,firestore:indexes
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KRES_PORTFOLIO }}
-          PROJECT_ID: kres-portfolio
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
