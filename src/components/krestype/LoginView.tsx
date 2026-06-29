@@ -48,15 +48,6 @@ export function LoginView({ onNavigate }: Props) {
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="username">Логин</Label>
-          <Input
-            id="username"
-            value="kres"
-            disabled
-            className="bg-muted/50"
-          />
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="password">Пароль</Label>
           <Input
             id="password"

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     "Teletype",
     "long-read",
   ],
-  authors: [{ name: "kres" }],
+  authors: [{ name: "krestype" }],
   openGraph: {
     title: "krestype",
     description: "Статьи и встроенные веб-страницы в одном месте.",

@@ -29,7 +29,7 @@ function defaultArticle(): ArticleInput {
     title: "",
     subtitle: "",
     coverImage: "",
-    authorName: "kres",
+    authorName: "krestype",
     authorAvatar: "",
     tags: [],
     blocks: [createBlock("text")],
