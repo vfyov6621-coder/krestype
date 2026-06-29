@@ -50,6 +50,18 @@ service cloud.firestore {
       allow write: if isKrestypeAdmin();
     }
 
+    // Article view events for analytics.
+    // Public create (any visitor records a view).
+    // Read restricted to krestype admin only — contains activity data.
+    match /article_views/{id} {
+      allow read: if isKrestypeAdmin();
+      allow create: if request.resource.data.slug is string
+        && request.resource.data.title is string
+        && request.resource.data.timestamp is number
+        && request.resource.data.dayKey is string;
+      allow update, delete: if isKrestypeAdmin();
+    }
+
     // ============ KRES PORTFOLIO (existing app) ============
 
     // ---- User profiles ----

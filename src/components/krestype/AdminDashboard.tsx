@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -90,9 +91,17 @@ export function AdminDashboard({ onNavigate }: Props) {
             Управление статьями krestype
           </p>
         </div>
-        <Button onClick={() => onNavigate("/admin/new")}>
-          <Plus className="h-4 w-4 mr-1.5" /> Новая статья
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onNavigate("/admin/analytics")}
+          >
+            <BarChart3 className="h-4 w-4 mr-1.5" /> Аналитика
+          </Button>
+          <Button onClick={() => onNavigate("/admin/new")}>
+            <Plus className="h-4 w-4 mr-1.5" /> Новая статья
+          </Button>
+        </div>
       </div>
 
       {articles === null ? (

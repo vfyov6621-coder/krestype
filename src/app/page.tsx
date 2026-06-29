@@ -6,6 +6,7 @@ import { HomeView } from "@/components/krestype/HomeView";
 import { ArticleView } from "@/components/krestype/ArticleView";
 import { LoginView } from "@/components/krestype/LoginView";
 import { AdminDashboard } from "@/components/krestype/AdminDashboard";
+import { AdminAnalytics } from "@/components/krestype/AdminAnalytics";
 import { EditorView } from "@/components/krestype/EditorView";
 import { Footer } from "@/components/krestype/Footer";
 
@@ -26,6 +27,8 @@ export default function Home() {
       content = <EditorView onNavigate={navigate} />;
     } else if (s2 === "edit" && s3) {
       content = <EditorView slug={s3} onNavigate={navigate} />;
+    } else if (s2 === "analytics") {
+      content = <AdminAnalytics onNavigate={navigate} />;
     } else {
       content = <AdminDashboard onNavigate={navigate} />;
     }

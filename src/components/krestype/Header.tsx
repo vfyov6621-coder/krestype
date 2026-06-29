@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { LogOut, PenLine, Home } from "lucide-react";
+import { LogOut, PenLine, Home, BarChart3 } from "lucide-react";
 
 interface Props {
   onNavigate: (to: string) => void;
@@ -59,6 +59,16 @@ export function Header({ onNavigate, currentPath }: Props) {
                   <span className="hidden sm:inline">На сайт</span>
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("/admin/analytics")}
+                className="gap-1.5"
+                title="Аналитика просмотров"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Аналитика</span>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Article } from "@/types";
 import { getArticleBySlug, incrementViews } from "@/lib/articles";
+import { recordView } from "@/lib/analytics";
 import { BlockRenderer } from "./BlockRenderer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,11 @@ export function ArticleView({ slug, onNavigate }: Props) {
         if (!active) return;
         setArticle(res);
         setLoadingState("done");
-        // Инкремент просмотров (fire-and-forget)
+        // Инкремент просмотров (fire-and-forget) — для счётчика на карточке
         if (res && res.published) {
           incrementViews(slug).catch(() => {});
+          // Записываем событие для аналитики (с дедупликацией 30 мин)
+          recordView(slug, res.title).catch(() => {});
         }
       })
       .catch(() => {
