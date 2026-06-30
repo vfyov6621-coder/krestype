@@ -29,7 +29,7 @@ function defaultArticle(): ArticleInput {
     title: "",
     subtitle: "",
     coverImage: "",
-    authorName: "krestype",
+    authorName: "progtype",
     authorAvatar: "",
     tags: [],
     blocks: [createBlock("text")],
@@ -38,7 +38,7 @@ function defaultArticle(): ArticleInput {
 }
 
 export function EditorView({ slug, onNavigate }: Props) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isCreator, user, creator } = useAuth();
   const [loading, setLoading] = useState(!!slug);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<ArticleInput>(defaultArticle());
@@ -47,7 +47,17 @@ export function EditorView({ slug, onNavigate }: Props) {
 
   useEffect(() => {
     if (!slug) {
-      setData(defaultArticle());
+      // Новая статья — подставляем creatorId текущего пользователя.
+      const uid = user?.uid || "";
+      const creatorEmail = user?.email || "";
+      const authorName =
+        creator?.displayName || (isAdmin ? "progtype admin" : "progtype");
+      setData({
+        ...defaultArticle(),
+        creatorId: uid,
+        creatorEmail,
+        authorName,
+      });
       setTagsInput("");
       setLoading(false);
       return;
@@ -60,18 +70,27 @@ export function EditorView({ slug, onNavigate }: Props) {
           onNavigate("/admin");
           return;
         }
+        // Проверка доступа: создатель может редактировать только свою статью,
+        // супер-админ — любую.
+        if (!isAdmin && res.creatorId && res.creatorId !== user?.uid) {
+          toast.error("Нет прав на редактирование этой статьи");
+          onNavigate("/admin");
+          return;
+        }
         const { ...rest } = res;
         setData(rest);
         setTagsInput(rest.tags.join(", "));
       })
       .catch((e) => toast.error("Не удалось загрузить: " + e.message))
       .finally(() => setLoading(false));
-  }, [slug, onNavigate]);
+  }, [slug, onNavigate, isAdmin, user, creator]);
 
-  if (!isAdmin) {
+  if (!isCreator) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <p className="text-muted-foreground mb-4">Доступ только для админа.</p>
+        <p className="text-muted-foreground mb-4">
+          Доступ только для создателей.
+        </p>
         <Button onClick={() => onNavigate("/login")}>Войти</Button>
       </div>
     );

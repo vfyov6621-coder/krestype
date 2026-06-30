@@ -2,20 +2,12 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <title>krestype</title>
+    <title>progtype</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!--
-      GitHub Pages SPA fallback.
-      Поскольку krestype использует hash-based роутинг (#/, #/article/:slug),
-      нам не нужен сложный SPA-redirect. Достаточно показать index.html
-      для любых прямых заходов на неизвестные пути.
-    -->
     <script>
-      // Перенаправляем все неизвестные пути на главную с сохранением hash
       var path = window.location.pathname;
-      var repo = "krestype";
+      var repo = "progtype";
       var baseUrl = "/" + repo + "/";
-      // Если путь не начинается с base — редирект на главную
       if (path !== baseUrl && path !== "/" + repo && path !== "/") {
         window.location.replace(baseUrl + window.location.hash);
       } else if (window.location.hash === "") {
@@ -25,6 +17,6 @@
     <meta http-equiv="refresh" content="0; url=/" />
   </head>
   <body>
-    <p>Redirecting to <a href="/">krestype</a>…</p>
+    <p>Redirecting to <a href="/">progtype</a>…</p>
   </body>
 </html>

@@ -1,26 +1,19 @@
 rules_version = '2';
 
-// Firestore security rules — shared between TWO apps in project kres-portfolio:
+// Firestore security rules — shared between THREE apps in project kres-portfolio:
 //
 //   1) Kres portfolio (existing app):
 //      - users, usernames, portfolio, analytics, viewers, settings, messages
 //
-//   2) krestype (article publishing platform, this repo):
-//      - articles/{slug}  -> { title, subtitle, blocks, published, ... }
+//   2) progtype site (this repo, static site on GitHub Pages):
+//      - articles/{slug}        -> articles (with creatorId field)
+//      - article_views/{id}     -> view events for analytics
+//      - creators/{uid}         -> creator profiles (created by Telegram bot)
 //
-// Admin model differs between apps:
-//   - Portfolio admin: /users/{uid}.isAdmin == true (Firestore lookup)
-//   - krestype admin:  Firebase Auth email == 'kres@krestype.app' (token check)
-//
-// Data model:
-//   users/{uid}                       -> { username, isAdmin, status, pendingUntil?, createdAt }
-//   users/{uid}/logins/{id}           -> { uid, username, userAgent, ip, country, city, timestamp }
-//   usernames/{name}                  -> { uid, createdAt }   (unique username guard)
-//   portfolio/{content}               -> { aboutBody, projects, skills, contacts, updatedAt }
-//   analytics/portfolio               -> { totalViews, updatedAt }
-//   viewers/{uid}                     -> { username, views, firstSeen, lastSeen }
-//   config/autoApproval               -> { delayMinutes, updatedAt }
-//   articles/{slug}                   -> krestype articles (see src/types/index.ts)
+//   3) progtype Telegram bot (separate Python service on HuggingFace Spaces):
+//      - Uses Firebase Admin SDK (bypasses rules — full access)
+//      - Creates /creators/{uid} + Firebase Auth users
+//      - Reads /articles, /article_views for analytics
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -35,72 +28,81 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
-    // krestype admin — determined by Firebase Auth email, NOT by /users/{uid}.
-    // This isolates krestype admin access from the portfolio's user system.
-    function isKrestypeAdmin() {
+    // progtype super-admin — determined by Firebase Auth email.
+    // This email is configured in src/lib/firebase.ts as ADMIN_EMAIL.
+    function isProgtypeAdmin() {
       return isSignedIn()
         && request.auth.token.email == 'kres@krestype.app';
     }
 
-    // ============ KRESTYPE (this app) ============
-    // Articles: public read, krestype-admin-only write.
-    // Slug = doc id, so URL /#/article/my-slug maps directly.
+    // progtype creator — signed-in user with active profile in /creators.
+    function isProgtypeCreator() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/creators/$(request.auth.uid))
+        && get(/databases/$(database)/documents/creators/$(request.auth.uid)).data.active == true;
+    }
+
+    // ============ PROGTYPE (this app) ============
+
+    // Creator profiles — created by Telegram bot (Admin SDK, bypasses rules).
+    // Creator can read own profile. Admin can read all.
+    match /creators/{uid} {
+      allow read: if isProgtypeAdmin()
+        || (isSignedIn() && request.auth.uid == uid);
+      // No client writes — only Admin SDK (bot) writes here.
+      allow write: if false;
+    }
+
+    // Articles: public read. Write: only owner (creatorId == uid) or super-admin.
     match /articles/{slug} {
       allow read: if true;
-      allow write: if isKrestypeAdmin();
+      // Create: must set creatorId == own uid (or be super-admin).
+      allow create: if isProgtypeAdmin()
+        || (isProgtypeCreator()
+            && request.resource.data.creatorId == request.auth.uid);
+      // Update/Delete: existing article's creatorId must match uid, or be super-admin.
+      allow update, delete: if isProgtypeAdmin()
+        || (isProgtypeCreator()
+            && resource.data.creatorId == request.auth.uid);
     }
 
     // Article view events for analytics.
-    // Public create (any visitor records a view).
-    // Read restricted to krestype admin only — contains activity data.
     match /article_views/{id} {
-      allow read: if isKrestypeAdmin();
+      allow read: if isProgtypeAdmin();
       allow create: if request.resource.data.slug is string
         && request.resource.data.title is string
         && request.resource.data.timestamp is number
         && request.resource.data.dayKey is string;
-      allow update, delete: if isKrestypeAdmin();
+      allow update, delete: if isProgtypeAdmin();
     }
 
     // ============ KRES PORTFOLIO (existing app) ============
 
-    // ---- User profiles ----
     match /users/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      // Self-registration: own uid, isAdmin false, status pending.
-      // Admin-created (console): admin may create a profile for any uid with
-      // status approved (the Auth user is created via a secondary app first).
       allow create: if isSignedIn()
         && request.resource.data.username is string
         && request.resource.data.username.size() >= 3
         && request.resource.data.username.size() <= 20
         && (
-          // self-registration
           (request.auth.uid == uid
            && request.resource.data.isAdmin == false
            && (request.resource.data.status is string
                ? request.resource.data.status == 'pending'
                : true))
-          ||
-          // admin creating a pre-verified user via the console
-          (isAdmin()
+          || (isAdmin()
            && request.resource.data.isAdmin == false
            && request.resource.data.status == 'approved')
         );
-      // Admin can update any field (status, pendingUntil, etc.).
       allow update: if isAdmin();
       allow delete: if isAdmin();
-
-      // ---- Per-user login history ----
       match /logins/{id} {
         allow read: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
-        // A user records their own login on sign-in.
         allow create: if isSignedIn() && request.auth.uid == uid;
         allow update, delete: if isAdmin();
       }
     }
 
-    // ---- Username uniqueness map ----
     match /usernames/{name} {
       allow read: if true;
       allow create: if isSignedIn()
@@ -108,13 +110,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ---- Portfolio content ----
     match /portfolio/{doc} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ---- Analytics ----
     match /analytics/portfolio {
       allow read: if isAdmin();
       allow update: if isSignedIn();
@@ -127,16 +127,11 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid == uid;
     }
 
-    // ---- Config (auto-approval delay, etc.) ----
-    // Public read so the client knows the delay; admin-only write.
     match /settings/{doc} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ---- Chat messages ----
-    // Auto-cleared daily at 00:00 MSK (client-side cleanup on load).
-    // 30-second cooldown per user (enforced client-side + via rules).
     match /messages/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
@@ -144,8 +139,8 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 500;
-      allow delete: if isSignedIn(); // any signed-in user can delete expired msgs
-      allow update: if false; // messages are immutable
+      allow delete: if isSignedIn();
+      allow update: if false;
     }
   }
 }

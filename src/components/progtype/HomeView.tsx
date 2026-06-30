@@ -53,7 +53,7 @@ export function HomeView({ onNavigate }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-12 text-center">
         <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-3">
-          krestype
+          progtype
         </h1>
         <p className="text-muted-foreground text-lg">
           Статьи, заметки и встроенные веб-страницы — в одном месте.

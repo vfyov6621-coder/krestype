@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function Header({ onNavigate, currentPath }: Props) {
-  const { isAdmin, logout } = useAuth();
+  const { isAdmin, isCreator, logout } = useAuth();
   const isAdminArea = currentPath.startsWith("/admin");
 
   return (
@@ -20,7 +20,7 @@ export function Header({ onNavigate, currentPath }: Props) {
           onClick={() => onNavigate("/")}
           className="font-bold tracking-tight text-lg hover:opacity-80 transition"
         >
-          krestype
+          progtype
         </button>
 
         <nav className="flex items-center gap-1">
@@ -36,7 +36,7 @@ export function Header({ onNavigate, currentPath }: Props) {
             </Button>
           )}
 
-          {isAdmin ? (
+          {isCreator ? (
             <>
               {!isAdminArea ? (
                 <Button
@@ -46,7 +46,9 @@ export function Header({ onNavigate, currentPath }: Props) {
                   className="gap-1.5"
                 >
                   <PenLine className="h-4 w-4" />
-                  <span className="hidden sm:inline">Кабинет</span>
+                  <span className="hidden sm:inline">
+                    {isAdmin ? "Админ" : "Кабинет"}
+                  </span>
                 </Button>
               ) : (
                 <Button
@@ -59,16 +61,18 @@ export function Header({ onNavigate, currentPath }: Props) {
                   <span className="hidden sm:inline">На сайт</span>
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("/admin/analytics")}
-                className="gap-1.5"
-                title="Аналитика просмотров"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Аналитика</span>
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onNavigate("/admin/analytics")}
+                  className="gap-1.5"
+                  title="Аналитика просмотров"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Аналитика</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

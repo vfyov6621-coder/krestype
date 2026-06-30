@@ -109,6 +109,23 @@ export async function getAllArticles(): Promise<Article[]> {
   }));
 }
 
+/**
+ * Возвращает статьи конкретного создателя (по uid).
+ * Используется в кабинете: создатель видит только свои.
+ */
+export async function getArticlesByCreator(creatorId: string): Promise<Article[]> {
+  const q = query(
+    collection(db, COLLECTION),
+    where("creatorId", "==", creatorId),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<Article, "id">),
+  }));
+}
+
 export async function getPublishedArticles(): Promise<Article[]> {
   const q = query(
     collection(db, COLLECTION),

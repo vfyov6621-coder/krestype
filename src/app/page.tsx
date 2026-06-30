@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "@/lib/router";
-import { Header } from "@/components/krestype/Header";
-import { HomeView } from "@/components/krestype/HomeView";
-import { ArticleView } from "@/components/krestype/ArticleView";
-import { LoginView } from "@/components/krestype/LoginView";
-import { AdminDashboard } from "@/components/krestype/AdminDashboard";
-import { AdminAnalytics } from "@/components/krestype/AdminAnalytics";
-import { EditorView } from "@/components/krestype/EditorView";
-import { Footer } from "@/components/krestype/Footer";
+import { Header } from "@/components/progtype/Header";
+import { HomeView } from "@/components/progtype/HomeView";
+import { ArticleView } from "@/components/progtype/ArticleView";
+import { LoginView } from "@/components/progtype/LoginView";
+import { AdminDashboard } from "@/components/progtype/AdminDashboard";
+import { AdminAnalytics } from "@/components/progtype/AdminAnalytics";
+import { EditorView } from "@/components/progtype/EditorView";
+import { Footer } from "@/components/progtype/Footer";
 
 export default function Home() {
   const { route, navigate } = useRouter();

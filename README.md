@@ -1,61 +1,58 @@
-# krestype
+# progtype
 
-Платформа для публикации статей в стиле Teletype — с поддержкой встроенных
-блоков сайтов (через iframe). Только один администратор может писать,
-остальные — читают.
+Платформа для публикации статей в стиле Teletype — с поддержкой нескольких
+создателей, embed-блоков сайтов (через iframe) и аналитики через Telegram-бота.
 
-**Live:** https://vfyov6621-coder.github.io/krestype/
-
-## Технологии
-
-- **Next.js 16** + TypeScript + Tailwind CSS 4 + shadcn/ui
-- **Firebase Auth** (email/password, только админ)
-- **Cloud Firestore** (статьи, блоки)
-- **GitHub Pages** (static export + GitHub Actions auto-deploy)
-
-## Почему GitHub Pages
-
-- Бесплатный хостинг статического контента
-- Деплой одной командой `git push`
-- HTTPS автоматически
-- Не нужны секреты/токены Firebase в GitHub
-- 100 GB/мес bandwidth и 1 GB storage на free tier
+**Live:** https://vfyov6621-coder.github.io/progtype/
 
 ## Архитектура
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── page.tsx            # единственная страница (hash-routing)
-│   ├── layout.tsx          # корневой layout
-│   └── globals.css         # типографика
-├── components/
-│   ├── krestype/           # компоненты krestype
-│   │   ├── Header.tsx
-│   │   ├── Footer.tsx
-│   │   ├── HomeView.tsx
-│   │   ├── ArticleView.tsx
-│   │   ├── LoginView.tsx
-│   │   ├── AdminDashboard.tsx
-│   │   ├── EditorView.tsx
-│   │   ├── BlockEditor.tsx
-│   │   ├── BlockRenderer.tsx
-│   │   └── EmbedRenderer.tsx
-│   └── ui/                 # shadcn/ui компоненты
-├── lib/
-│   ├── firebase.ts         # инициализация Firebase (client SDK)
-│   ├── auth-context.tsx    # React Context для auth
-│   ├── articles.ts         # CRUD статей в Firestore
-│   └── router.ts           # hash-based роутинг
-└── types/
-    └── index.ts            # типы Article, Block
-
-public/404.html             # SPA fallback для GitHub Pages
-.github/workflows/deploy.yml # CI/CD: push → build → GitHub Pages
-next.config.ts              # static export + basePath=/krestype
-firestore.rules             # security rules (read public, write auth)
-firestore.indexes.json      # индексы Firestore
+┌─────────────────────┐         ┌──────────────────────┐
+│  progtype website   │         │  progtype Telegram   │
+│  (GitHub Pages)     │         │  bot (HF Spaces)     │
+│                     │         │                      │
+│  Next.js 16 static  │         │  Python + python-tg  │
+│  Firebase Client SDK│         │  Firebase Admin SDK  │
+└─────────┬───────────┘         └──────────┬───────────┘
+          │                                │
+          │   ┌────────────────────────────┼─┐
+          │   │  Firebase project           │ │
+          └──▶│  kres-portfolio             │◀┘
+              │                              │
+              │  /articles/{slug}            │
+              │  /article_views/{id}         │
+              │  /creators/{uid}             │
+              │  + Auth (email/password)     │
+              └──────────────────────────────┘
 ```
+
+- **Website** (этот репозиторий): статика на GitHub Pages, использует Firebase Client SDK
+- **Telegram bot** (`bot/` подкаталог): Python на HuggingFace Spaces, использует Firebase Admin SDK
+- **Shared backend**: один Firebase проект `kres-portfolio`
+
+## Роли
+
+| Роль | Кто | Что может |
+|------|-----|-----------|
+| **Гость** | Любой посетитель сайта | Читать опубликованные статьи |
+| **Создатель** | Юзер, заведённый ботом | + Писать/редактировать свои статьи |
+| **Супер-админ** | `kres@krestype.app` | + Видеть все статьи + аналитика на сайте |
+| **Telegram-админ** | Указан в `ADMIN_TELEGRAM_IDS` | Создавать/удалять creators в боте |
+
+## Связь создателей со статьями
+
+Каждая статья имеет поле `creatorId` (Firebase Auth uid автора):
+- Создатель при входе видит только свои статьи (`where("creatorId", "==", uid)`)
+- Супер-админ видит все
+- Firestore Security Rules гарантируют, что creator A не может изменить статью creator B (проверка `resource.data.creatorId == request.auth.uid`)
+
+## Технологии
+
+- **Website**: Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + recharts
+- **Bot**: Python 3.11 + python-telegram-bot 21 + firebase-admin 6
+- **Backend**: Firebase Auth + Cloud Firestore
+- **Hosting**: GitHub Pages (website) + HuggingFace Spaces (bot)
 
 ## Локальная разработка
 
@@ -64,106 +61,95 @@ bun install
 bun run dev    # http://localhost:3000
 ```
 
-## Подготовка Firebase (один раз)
+## Структура
 
-GitHub Pages — только статика. Данные и авторизация — в Firebase.
-
-1. Зайти в [Firebase Console](https://console.firebase.google.com) → проект `kres-portfolio`
-2. **Authentication → Sign-in method → Email/Password → Enable**
-3. **Authentication → Users → Add user**:
-   - Email: `kres@krestype.app` (или любой другой — см. ниже «Как сменить логин/пароль»)
-   - Password: придумайте надёжный пароль (не хранится в репозитории)
-4. **Firestore Database → Create database** (production mode, любой регион)
-5. **Firestore → Rules** — вставить содержимое `firestore.rules` и нажать Publish
-   (или выполнить `firebase deploy --only firestore:rules` локально с Firebase CLI)
-
-### Важно: проект `kres-portfolio` общий с другим приложением
-
-В проекте `kres-portfolio` уже работает другое приложение (Kres portfolio) со
-своими коллекциями (`users`, `usernames`, `portfolio`, `analytics`, `viewers`,
-`settings`, `messages`). Правила в `firestore.rules` учитывают это:
-
-- krestype использует **только** коллекцию `/articles/{slug}`
-- Админ krestype определяется по **email** `kres@krestype.app` (через
-  `request.auth.token.email`), НЕ через `/users/{uid}.isAdmin`
-- Существующие правила для портфолио сохранены без изменений
-- Никакого catch-all `match /{document=**}` нет — другие коллекции работают
-  по своим правилам, как и раньше
-
-Деплой Firestore rules через Firebase CLI (опционально, только когда меняете правила):
-```bash
-npm install -g firebase-tools
-firebase login
-firebase deploy --only firestore:rules
+```
+├── src/                          # Website (Next.js)
+│   ├── app/
+│   │   ├── page.tsx              # hash-routing main page
+│   │   ├── layout.tsx            # root layout + metadata
+│   │   └── globals.css           # typography
+│   ├── components/progtype/      # 10 UI components
+│   ├── lib/
+│   │   ├── firebase.ts           # Firebase Client SDK init
+│   │   ├── auth-context.tsx      # Auth + role detection
+│   │   ├── articles.ts           # CRUD + creator filter
+│   │   ├── analytics.ts          # view tracking + aggregation
+│   │   └── router.ts             # hash-based router
+│   └── types/index.ts            # Article, Block, Creator types
+├── bot/                          # Telegram bot (separate Python project)
+│   ├── bot.py                    # bot logic
+│   ├── requirements.txt
+│   ├── Dockerfile                # for HuggingFace Spaces
+│   └── README.md                 # bot deployment guide
+├── public/404.html               # SPA fallback
+├── firebase.json                 # firestore rules/indexes config
+├── firestore.rules               # security rules (3 apps share project)
+├── firestore.indexes.json        # composite indexes
+├── .github/workflows/deploy.yml  # GitHub Pages CI/CD
+└── next.config.ts                # static export + basePath=/progtype
 ```
 
-## Как сменить логин или пароль админа
+## Подготовка Firebase (один раз)
 
-Пароль **вообще нигде не хранится** в коде — он вводится при входе и напрямую
-проверяется Firebase Auth. Email хранится в двух местах и должен совпадать:
+1. https://console.firebase.google.com → project `kres-portfolio`
+2. **Authentication → Sign-in method → Email/Password → Enable**
+3. **Authentication → Users → Add user**:
+   - Email: `kres@krestype.app` (супер-админ)
+   - Password: придумайте надёжный
+4. **Firestore Database → Create database** (production mode)
+5. **Firestore → Rules** — вставить содержимое `firestore.rules` → Publish
+6. **Firestore → Indexes** — индексы создадутся автоматически при первом запросе,
+   либо по ссылке из ошибки Firestore
 
-### Если хотите сменить только пароль
+## Деплой
 
-1. Firebase Console → Authentication → Users → найдите `kres@krestype.app`
-2. → "Reset password" или "⋮" → "Reset password"
-3. Введите новый пароль
-4. Готово — ничего в коде менять не нужно
-
-### Если хотите сменить email
-
-1. Firebase Console → Authentication → Users → удалите старый `kres@krestype.app`
-2. Add user → создайте новый email + пароль
-3. В `src/lib/firebase.ts` поменяйте `ADMIN_EMAIL` на новый email
-4. В `firestore.rules` поменяйте `isKrestypeAdmin()` — замените `'kres@krestype.app'` на новый email
-5. Запушьте — GitHub Actions сам пересоберёт и задеплоит сайт
-
-## Деплой на GitHub Pages (автоматически)
+### Website (автоматически)
 
 При пуше в `main` GitHub Actions:
-1. Устанавливает зависимости (`bun install`)
-2. Собирает статику (`bun run build` → `out/`)
-3. Добавляет `.nojekyll` (чтобы GitHub Pages не игнорировал `_next/`)
-4. Заливает `out/` в GitHub Pages
+1. `bun install` + `bun run build` → `/out`
+2. Заливает `/out` на GitHub Pages
+3. URL: https://vfyov6621-coder.github.io/progtype/
 
-**URL сайта:** https://vfyov6621-coder.github.io/krestype/
+### Telegram bot
 
-Чтобы включить Pages первый раз:
-1. GitHub repo → Settings → Pages → Source = **GitHub Actions**
-2. Сделать любой push в `main` — запустится workflow
+См. детальную инструкцию: [`bot/README.md`](./bot/README.md)
+
+Кратко:
+1. Создать HuggingFace Space (SDK: Docker)
+2. Залить файлы из `bot/`
+3. Установить секреты: `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `FIREBASE_SERVICE_ACCOUNT`
+4. Space автоматически соберётся и запустит бота
 
 ## Роутинг (hash-based)
 
-Используется hash-based роутинг, потому что GitHub Pages не умеет
-server-side rewrite (нельзя сказать «все 404 → /index.html»).
-Hash-роутинг решает эту проблему: `#/article/my-slug` — клиент-side.
-
-- `/#/`                  — главная (список статей)
+- `/#/`                  — главная (публичные статьи)
 - `/#/article/:slug`     — чтение статьи
-- `/#/login`             — вход админа
-- `/#/admin`             — кабнет админа
+- `/#/login`             — вход для создателей
+- `/#/admin`             — кабнет (creator видит свои, admin — все)
 - `/#/admin/new`         — новая статья
 - `/#/admin/edit/:slug`  — редактирование
+- `/#/admin/analytics`   — аналитика (только супер-админ)
+
+## Безопасность
+
+- **Пароли не хранятся в коде** — только в Firebase Auth
+- **Email супер-админа** хранится в `src/lib/firebase.ts` (нужно для client-side проверки роли)
+- **Bot token** и **Firebase service account** — только в секретах HuggingFace Space
+- **Firestore Rules** гарантируют изоляцию создателей (см. `firestore.rules`)
 
 ## Embed-блоки
 
 Блок «Веб-страница» встраивает произвольный URL через `<iframe>` с sandbox.
-
-Многие сайты (Google, Twitter/X, банки, YouTube на некоторых доменах)
-запрещают встраивание через заголовок `X-Frame-Options: DENY` или
-CSP `frame-ancestors`. Для таких сайтов показывается fallback с кнопкой
-«Открыть в новой вкладке» — это не баг, а ограничение безопасности самих
-сайтов, его обойти нельзя.
+Многие сайты (Google, Twitter, банки) запрещают встраивание через
+`X-Frame-Options` — для них показывается fallback со ссылкой «Открыть в новой вкладке».
 
 ## 24/7 работа
 
-GitHub Pages обеспечивает:
-- Глобальный CDN (Cloudflare)
-- Автоматический HTTPS
-- Высокий аптайм (GitHub инфраструктура)
-- Авто-деплой из git
-
-Для хранения данных и авторизации используется Firebase (отдельно от хостинга).
+- **GitHub Pages**: глобальный CDN, авто-HTTPS, ~99% uptime
+- **HuggingFace Spaces**: бесплатный CPU-контейнер, перезапускается при падении
+- **Firebase**: 99.9% SLA, автоматическое масштабирование
 
 ## Лицензия
 
-© kres
+MIT

@@ -3,7 +3,7 @@
 // { slug, title, timestamp }
 //
 // Запись: публичная (любой посетитель создает событие при чтении статьи).
-// Чтение: только krestype admin (см. firestore.rules).
+// Чтение: только progtype admin (см. firestore.rules).
 //
 // Чтобы не упереться в лимиты Firestore (50K writes/день на free tier),
 // мы НЕ записываем событие, если пользователь уже смотрел эту статью
@@ -34,7 +34,7 @@ export async function recordView(slug: string, title: string): Promise<void> {
   try {
     if (typeof window === "undefined") return;
 
-    const key = `krestype_view_${slug}`;
+    const key = `progtype_view_${slug}`;
     const last = Number(localStorage.getItem(key) || "0");
     const now = Date.now();
     if (now - last < DEDUP_WINDOW_MS) return; // дедупликация

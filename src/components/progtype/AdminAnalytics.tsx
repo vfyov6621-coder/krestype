@@ -140,8 +140,12 @@ export function AdminAnalytics({ onNavigate }: Props) {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <p className="text-muted-foreground mb-4">Доступ только для админа.</p>
-        <Button onClick={() => onNavigate("/login")}>Войти</Button>
+        <p className="text-muted-foreground mb-4">
+          Аналитика доступна только супер-админу.
+          <br />
+          Создатели видят статистику в Telegram-боте.
+        </p>
+        <Button onClick={() => onNavigate("/admin")}>В кабинет</Button>
       </div>
     );
   }

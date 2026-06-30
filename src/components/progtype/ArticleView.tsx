@@ -25,7 +25,7 @@ function formatDate(ms: number): string {
 }
 
 export function ArticleView({ slug, onNavigate }: Props) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   // Используем key-based reset: передаём slug как key из родителя,
   // тогда компонент перемонтируется при смене slug и начальное состояние
   // undefined устанавливается один раз.
@@ -127,7 +127,7 @@ export function ArticleView({ slug, onNavigate }: Props) {
               #{t}
             </span>
           ))}
-          {isAdmin && (
+          {(isAdmin || (user && article.creatorId === user.uid)) && (
             <Button
               variant="outline"
               size="sm"
@@ -162,7 +162,7 @@ export function ArticleView({ slug, onNavigate }: Props) {
           </span>{" "}
           · {formatDate(article.createdAt)}
         </p>
-        <p className="mt-2 text-xs">© krestype</p>
+        <p className="mt-2 text-xs">© progtype</p>
       </footer>
     </article>
   );

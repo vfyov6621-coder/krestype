@@ -12,10 +12,10 @@ export function Footer({ onNavigate }: Props) {
           onClick={() => onNavigate("/")}
           className="font-medium text-foreground hover:opacity-80"
         >
-          krestype
+          progtype
         </button>
         <p className="text-xs text-center">
-          © {new Date().getFullYear()} krestype · Powered by Firebase
+          © {new Date().getFullYear()} progtype · Powered by Firebase
         </p>
       </div>
     </footer>

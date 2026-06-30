@@ -82,8 +82,26 @@ export interface Article {
   createdAt: number; // unix ms
   updatedAt: number; // unix ms
   views: number;
+  // ID создателя статьи (Firebase Auth uid). Привязка к автору.
+  // Если статья создана до внедрения multi-creator — поле может отсутствовать,
+  // тогда её может редактировать только супер-админ (ADMIN_EMAIL).
+  creatorId?: string;
+  creatorEmail?: string; // для удобства отображения в кабинете
 }
 
 // Для создания новой статьи (без id — Firestore сгенерирует)
 export type ArticleInput = Omit<Article, "id" | "createdAt" | "updatedAt" | "views"> &
   Partial<Pick<Article, "views">>;
+
+// Профиль создателя — создаётся Telegram-ботом через Firebase Admin SDK.
+// Совпадает с тем, что пишет бот в Firestore.
+export interface Creator {
+  uid: string;          // Firebase Auth uid
+  email: string;
+  displayName: string;  // имя для подписи в статьах
+  telegramId?: string;  // опционально — Telegram chat ID создателя
+  createdAt: number;    // unix ms
+  createdBy: string;    // Telegram username админа, который создал
+  active: boolean;      // можно ли авторизоваться (если false — вход запрещён)
+  role: "creator" | "admin"; // admin = супер-админ (видит всё)
+}

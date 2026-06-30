@@ -16,27 +16,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "krestype",
+  title: "progtype",
   description:
-    "krestype — статьи, заметки и встроенные веб-страницы в одном месте. Платформа для длинных публикаций в стиле Teletype.",
+    "progtype — статьи, заметки и встроенные веб-страницы в одном месте. Платформа для длинных публикаций в стиле Teletype.",
   keywords: [
-    "krestype",
+    "progtype",
     "блог",
     "статьи",
     "публикации",
     "Teletype",
     "long-read",
   ],
-  authors: [{ name: "krestype" }],
+  authors: [{ name: "progtype" }],
   openGraph: {
-    title: "krestype",
+    title: "progtype",
     description: "Статьи и встроенные веб-страницы в одном месте.",
-    siteName: "krestype",
+    siteName: "progtype",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "krestype",
+    title: "progtype",
     description: "Статьи и встроенные веб-страницы в одном месте.",
   },
 };

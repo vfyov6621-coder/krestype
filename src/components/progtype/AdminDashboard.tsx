@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Article } from "@/types";
-import { getAllArticles, deleteArticle } from "@/lib/articles";
+import { getAllArticles, getArticlesByCreator, deleteArticle } from "@/lib/articles";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,13 +42,19 @@ function formatDate(ms: number): string {
 }
 
 export function AdminDashboard({ onNavigate }: Props) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isCreator, user } = useAuth();
   const [articles, setArticles] = useState<Article[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const reload = () => {
     setArticles(null);
-    getAllArticles()
+    // Супер-админ видит все статьи. Создатель — только свои.
+    const fetcher = isAdmin
+      ? getAllArticles()
+      : user
+        ? getArticlesByCreator(user.uid)
+        : Promise.resolve([]);
+    fetcher
       .then(setArticles)
       .catch((e) => {
         toast.error("Не удалось загрузить: " + e.message);
@@ -58,7 +64,7 @@ export function AdminDashboard({ onNavigate }: Props) {
 
   useEffect(() => {
     reload();
-  }, []);
+  }, [isAdmin, user]);
 
   const handleDelete = async (slug: string) => {
     setDeleting(slug);
@@ -73,10 +79,12 @@ export function AdminDashboard({ onNavigate }: Props) {
     }
   };
 
-  if (!isAdmin) {
+  if (!isCreator) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <p className="text-muted-foreground mb-4">Доступ только для админа.</p>
+        <p className="text-muted-foreground mb-4">
+          Доступ только для создателей.
+        </p>
         <Button onClick={() => onNavigate("/login")}>Войти</Button>
       </div>
     );
@@ -86,9 +94,13 @@ export function AdminDashboard({ onNavigate }: Props) {
     <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Кабинет</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isAdmin ? "Кабинет администратора" : "Кабинет создателя"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Управление статьями krestype
+            {isAdmin
+              ? "Все статьи всех создателей"
+              : "Управление вашими статьями progtype"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -143,6 +155,14 @@ export function AdminDashboard({ onNavigate }: Props) {
                   <span>{a.views} просм.</span>
                   <span>·</span>
                   <span className="truncate">/{a.slug}</span>
+                  {isAdmin && a.creatorEmail && (
+                    <>
+                      <span>·</span>
+                      <span className="truncate text-foreground/70">
+                        {a.creatorEmail}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -156,49 +176,53 @@ export function AdminDashboard({ onNavigate }: Props) {
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onNavigate(`/admin/edit/${a.slug}`)}
-                  title="Редактировать"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
+                {(isAdmin || !a.creatorId || a.creatorId === user?.uid) && (
+                  <>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      disabled={deleting === a.slug}
-                      title="Удалить"
+                      className="h-8 w-8"
+                      onClick={() => onNavigate(`/admin/edit/${a.slug}`)}
+                      title="Редактировать"
                     >
-                      {deleting === a.slug ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
+                      <Edit className="h-4 w-4" />
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Удалить статью?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Статья «{a.title}» будет удалена безвозвратно.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Отмена</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(a.slug)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Удалить
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          disabled={deleting === a.slug}
+                          title="Удалить"
+                        >
+                          {deleting === a.slug ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Удалить статью?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Статья «{a.title}» будет удалена безвозвратно.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Отмена</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(a.slug)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Удалить
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
               </div>
             </li>
           ))}

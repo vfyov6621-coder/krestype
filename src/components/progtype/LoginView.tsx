@@ -14,15 +14,16 @@ interface Props {
 
 export function LoginView({ onNavigate }: Props) {
   const { login } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) return;
+    if (!email || !password) return;
     setLoading(true);
     try {
-      await login(password);
+      await login(email, password);
       toast.success("Вход выполнен");
       onNavigate("/admin");
     } catch (err) {
@@ -40,13 +41,26 @@ export function LoginView({ onNavigate }: Props) {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <Lock className="h-5 w-5" />
         </div>
-        <h1 className="text-2xl font-semibold">Вход для админа</h1>
+        <h1 className="text-2xl font-semibold">Вход для создателей</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Только для администратора. Публичная регистрация отключена.
+          Только для создателей, заведённых через Telegram-бота.
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="creator@progtype.app"
+            autoComplete="email"
+            autoFocus
+            required
+          />
+        </div>
         <div className="space-y-2">
           <Label htmlFor="password">Пароль</Label>
           <Input
@@ -54,8 +68,8 @@ export function LoginView({ onNavigate }: Props) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Введите пароль"
-            autoFocus
+            placeholder="••••••••"
+            autoComplete="current-password"
             required
           />
         </div>
@@ -68,8 +82,7 @@ export function LoginView({ onNavigate }: Props) {
       </form>
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        Сессия сохраняется в этом браузере. Не забудьте выйти на чужом
-        устройстве.
+        Нет аккаунта? Обратитесь к администратору в Telegram.
       </p>
     </div>
   );
